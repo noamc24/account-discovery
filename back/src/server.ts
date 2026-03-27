@@ -1,10 +1,13 @@
-import dotenv from "dotenv";
 import app from "./app";
+import { env } from "./config/env";
+import { connectDB } from "./config/db";
 
-dotenv.config();
+const startServer = async (): Promise<void> => {
+  await connectDB(env.mongoUri);
 
-const PORT = process.env.PORT || 5000;
+  app.listen(env.port, () => {
+    console.log(`Server is running on http://localhost:${env.port}`);
+  });
+};
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+startServer();

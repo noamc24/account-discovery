@@ -1,13 +1,17 @@
 import express from "express";
 import cors from "cors";
+import healthRoutes from "./routes/health.routes";
+import authRoutes from "./routes/auth.routes";
+import { errorHandler } from "./middleware/error.middleware";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.get("/api/health", (_req, res) => {
-  res.status(200).json({ message: "Back is working ✅" });
-});
+app.use("/api", healthRoutes);
+app.use("/api/auth", authRoutes);
+
+app.use(errorHandler);
 
 export default app;
