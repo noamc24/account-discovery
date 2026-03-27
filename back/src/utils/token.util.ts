@@ -6,3 +6,11 @@ export const generateToken = (userId: string): string => {
     expiresIn: "7d",
   });
 };
+
+interface JwtPayload {
+  userId: string;
+}
+
+export const verifyToken = (token: string): JwtPayload => {
+  return jwt.verify(token, env.jwtSecret) as JwtPayload;
+};
