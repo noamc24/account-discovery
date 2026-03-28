@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { loginRequest } from "../api/authApi";
+import { registerRequest } from "../api/authApi";
 
-function LoginPage() {
+function RegisterPage() {
   const navigate = useNavigate();
 
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -25,7 +26,7 @@ function LoginPage() {
     setIsLoading(true);
 
     try {
-      const data = await loginRequest({ email, password });
+      const data = await registerRequest({ fullName, email, password });
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -46,13 +47,26 @@ function LoginPage() {
         <div className="auth-card__content">
           <div className="auth-header">
             <p className="auth-badge">Account Discovery</p>
-            <h1>Welcome back</h1>
+            <h1>Create your account</h1>
             <p className="auth-subtitle">
-              Sign in to continue to your dashboard and protected routes test.
+              Register to start building your secure account discovery workspace.
             </p>
           </div>
 
           <form className="auth-form" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="fullName">Full name</label>
+              <input
+                id="fullName"
+                type="text"
+                placeholder="Enter your full name"
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                autoComplete="name"
+                required
+              />
+            </div>
+
             <div className="form-group">
               <label htmlFor="email">Email</label>
               <input
@@ -71,10 +85,10 @@ function LoginPage() {
               <input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Create a password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
               />
             </div>
@@ -82,13 +96,13 @@ function LoginPage() {
             {errorMessage && <p className="form-error">{errorMessage}</p>}
 
             <button className="auth-button" type="submit" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoading ? "Creating account..." : "Create account"}
             </button>
           </form>
 
           <div className="auth-footer">
             <p>
-              Don&apos;t have an account yet? <Link to="/register">Create one</Link>
+              Already have an account? <Link to="/">Sign in here</Link>
             </p>
           </div>
         </div>
@@ -97,4 +111,4 @@ function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default RegisterPage;

@@ -283,3 +283,11 @@ a {
     width: 100%;
   }
 }
+.auth-footer a {
+  color: #c7d0ff;
+  font-weight: 600;
+}
+
+.auth-footer a:hover {
+  color: #ffffff;
+}

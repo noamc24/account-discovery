@@ -10,6 +10,12 @@ export interface LoginResponse {
   token: string;
 }
 
+export interface RegisterResponse {
+  message: string;
+  user: User;
+  token: string;
+}
+
 export interface MeResponse {
   message: string;
   user: User;
