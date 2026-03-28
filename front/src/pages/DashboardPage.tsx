@@ -44,6 +44,10 @@ function DashboardPage() {
     fetchUser();
   }, [navigate]);
 
+  const handleConnectGmail = () => {
+    window.location.href = "http://localhost:5000/api/gmail/connect";
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -76,7 +80,9 @@ function DashboardPage() {
             <Link className="scan-link-button" to="/scan">
               Open scan page
             </Link>
-
+            <button className="scan-link-button" onClick={handleConnectGmail}>
+              Connect Gmail
+            </button>
             <button className="logout-button" onClick={handleLogout}>
               Log out
             </button>
