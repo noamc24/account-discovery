@@ -1,20 +1,18 @@
 import { useMemo, useState } from "react";
 import type { FormEvent, ReactElement } from "react";
-import { Link } from "react-router-dom";
-
-interface MockScanResult {
-  serviceName: string;
-  type: string;
-  confidence: string;
-  evidence: string;
-}
+import { Link, useNavigate } from "react-router-dom";
+import { scanEmailRequest } from "../api/scanApi";
+import type { ScanResult } from "../api/scanApi";
 
 function ScanPage() {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
-  const [results, setResults] = useState<MockScanResult[]>([]);
+  const [results, setResults] = useState<ScanResult[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
+  const [serverMessage, setServerMessage] = useState("");
 
   const emailLooksValid = useMemo(() => {
     return /\S+@\S+\.\S+/.test(email);
@@ -23,6 +21,7 @@ function ScanPage() {
   const handleScan = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage("");
+    setServerMessage("");
 
     if (!email.trim()) {
       setErrorMessage("Please enter an email address.");
@@ -34,41 +33,28 @@ function ScanPage() {
       return;
     }
 
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      navigate("/");
+      return;
+    }
+
     setIsScanning(true);
     setHasScanned(false);
 
-    await new Promise((resolve) => setTimeout(resolve, 1400));
-
-    const mockResults: MockScanResult[] = [
-      {
-        serviceName: "Spotify",
-        type: "Likely account",
-        confidence: "High",
-        evidence: "Welcome email + password reset pattern",
-      },
-      {
-        serviceName: "Amazon",
-        type: "Purchase relationship",
-        confidence: "High",
-        evidence: "Order confirmation and receipt activity",
-      },
-      {
-        serviceName: "LinkedIn",
-        type: "Likely account",
-        confidence: "Medium",
-        evidence: "Security alert and sign-in emails",
-      },
-      {
-        serviceName: "Adidas",
-        type: "Newsletter only",
-        confidence: "Low",
-        evidence: "Marketing emails with unsubscribe header",
-      },
-    ];
-
-    setResults(mockResults);
-    setHasScanned(true);
-    setIsScanning(false);
+    try {
+      const data = await scanEmailRequest(email, token);
+      setResults(data.results);
+      setServerMessage(data.message);
+      setHasScanned(true);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Something went wrong"
+      );
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const getConfidenceClass = (confidence: string): string => {
@@ -85,8 +71,8 @@ function ScanPage() {
             <p className="dashboard-badge">Account Discovery</p>
             <h1>Scan an email</h1>
             <p className="scan-subtitle">
-              This is the first UI step of the discovery engine. For now it
-              shows mock detection results so we can build the full flow cleanly.
+              This page now sends a real request to your backend and returns
+              scan results from the API.
             </p>
           </div>
 
@@ -119,7 +105,7 @@ function ScanPage() {
             <div className="scan-spinner" aria-hidden="true"></div>
             <div>
               <h2>Scanning in progress</h2>
-              <p>Analyzing mailbox evidence and building initial results...</p>
+              <p>Contacting backend API and building discovery results...</p>
             </div>
           </div>
         )}
@@ -131,9 +117,16 @@ function ScanPage() {
               <p>{results.length} findings for {email}</p>
             </div>
 
+            {serverMessage && (
+              <div className="dashboard-success-box" style={{ marginBottom: "1rem" }}>
+                <h2>Server response</h2>
+                <p>{serverMessage}</p>
+              </div>
+            )}
+
             <div className="scan-results-grid">
               {results.map((result): ReactElement => (
-                <article className="scan-result-card" key={result.serviceName}>
+                <article className="scan-result-card" key={`${result.serviceName}-${result.type}`}>
                   <div className="scan-result-top">
                     <h3>{result.serviceName}</h3>
                     <span className={getConfidenceClass(result.confidence)}>
