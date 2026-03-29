@@ -1,29 +1,36 @@
+export interface DetectionEvidence {
+  rule: string;
+  matchedText: string;
+  weight: number;
+}
+
 export interface ScanResult {
+  serviceKey: string;
   serviceName: string;
+  domain: string;
   type: string;
   confidence: "High" | "Medium" | "Low";
-  evidence: string;
+  score: number;
+  evidence: DetectionEvidence[];
+  relatedEmailIds: string[];
 }
 
 export interface ScanResponse {
   message: string;
-  email: string;
+  mode: "quick" | "deep";
+  totalEmailsScanned: number;
+  totalServicesFound: number;
   results: ScanResult[];
 }
 
 const API_BASE_URL = "http://localhost:5000/api";
 
 export const scanEmailRequest = async (
-  email: string,
-  token: string
+  mode: "quick" | "deep" | "full"
 ): Promise<ScanResponse> => {
-  const response = await fetch(`${API_BASE_URL}/scan`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ email }),
+  const response = await fetch(`${API_BASE_URL}/gmail/scan?mode=${mode}`, {
+    method: "GET",
+    credentials: "include",
   });
 
   const data = await response.json();

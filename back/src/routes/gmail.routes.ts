@@ -1,14 +1,16 @@
-import { Router } from "express";
+import express from "express";
 import {
-  getAuthUrl,
-  redirectToGoogleAuth,
-  handleGoogleCallback,
+  connectGmail,
+  gmailCallback,
+  getGmailMessages,
+  scanGmailAccounts,
 } from "../controllers/gmail.controller";
 
-const router = Router();
+const router = express.Router();
 
-router.get("/auth-url", getAuthUrl);
-router.get("/connect", redirectToGoogleAuth);
-router.get("/callback", handleGoogleCallback);
+router.get("/connect", connectGmail);
+router.get("/callback", gmailCallback);
+router.get("/messages", getGmailMessages);
+router.get("/scan", scanGmailAccounts);
 
 export default router;

@@ -32,12 +32,13 @@ app.use(
   })
 );
 
+app.use("/api/gmail", gmailRoutes);
 app.use("/api", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/scan", scanRoutes);
-app.use("/api/gmail", gmailRoutes);
 
 app.use(errorHandler);
 
 export default app;
+

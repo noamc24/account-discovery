@@ -1,68 +1,143 @@
 import { Request, Response } from "express";
-import { oauth2Client } from "../config/google";
+import { google } from "googleapis";
+import {
+  fetchNormalizedEmails,
+  ScanMode,
+} from "../services/gmail.service";
+import { scanEmails } from "../services/scan.service";
 
-const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
 
-export const getAuthUrl = (_req: Request, res: Response): void => {
-  const url = oauth2Client.generateAuthUrl({
-    access_type: "offline",
-    prompt: "consent",
-    scope: SCOPES,
-  });
+function normalizeSessionTokens(tokens: any) {
+  return {
+    access_token: tokens?.access_token ?? undefined,
+    refresh_token: tokens?.refresh_token ?? undefined,
+    scope: tokens?.scope ?? undefined,
+    token_type: tokens?.token_type ?? undefined,
+    expiry_date: tokens?.expiry_date ?? undefined,
+    id_token: tokens?.id_token ?? undefined,
+  };
+}
 
-  res.status(200).json({ url });
-};
+function getRequestedScanMode(mode: unknown): ScanMode {
+  if (mode === "deep") return "deep";
+  if (mode === "full") return "full";
+  return "quick";
+}
 
-export const redirectToGoogleAuth = (_req: Request, res: Response): void => {
-  const url = oauth2Client.generateAuthUrl({
-    access_type: "offline",
-    prompt: "consent",
-    scope: SCOPES,
-  });
-
-  res.redirect(url);
-};
-
-export const handleGoogleCallback = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export function connectGmail(req: Request, res: Response) {
   try {
-    console.log("=== Gmail callback hit ===");
-    console.log("Query:", req.query);
-    console.log("Session exists:", !!req.session);
+    const url = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      prompt: "consent",
+      scope: ["https://www.googleapis.com/auth/gmail.readonly"],
+    });
 
+    return res.redirect(url);
+  } catch (error) {
+    console.error("CONNECT GMAIL ERROR:", error);
+    return res.status(500).json({
+      message: "Failed to connect Gmail",
+    });
+  }
+}
+
+export async function gmailCallback(req: Request, res: Response) {
+  try {
     const code = req.query.code as string;
 
     if (!code) {
-      res.status(400).json({ message: "No code provided" });
-      return;
+      return res.status(400).json({
+        message: "Missing Google authorization code",
+      });
     }
 
     const { tokens } = await oauth2Client.getToken(code);
 
-    console.log("Tokens received:", {
-      hasAccessToken: !!tokens.access_token,
-      hasRefreshToken: !!tokens.refresh_token,
-      expiryDate: tokens.expiry_date,
-    });
-
-    req.session.tokens = tokens;
+    req.session.tokens = {
+      access_token: tokens.access_token ?? undefined,
+      refresh_token: tokens.refresh_token ?? undefined,
+      scope: tokens.scope ?? undefined,
+      token_type: tokens.token_type ?? undefined,
+      expiry_date: tokens.expiry_date ?? undefined,
+      id_token: tokens.id_token ?? undefined,
+    };
 
     req.session.save((err) => {
       if (err) {
-        console.error("Session save error:", err);
-        res.status(500).json({ message: "Failed to save session" });
-        return;
+        console.error("SESSION SAVE ERROR:", err);
+        return res.status(500).json({
+          message: "Failed to save Gmail session",
+        });
       }
 
-      console.log("Session saved successfully");
-      res.redirect("http://localhost:5173/dashboard");
+      return res.redirect("http://localhost:5173/dashboard");
     });
   } catch (error) {
-    console.error("Google callback error:", error);
-    res.status(500).json({
-      message: error instanceof Error ? error.message : "Failed to authenticate with Google",
+    console.error("GMAIL CALLBACK ERROR:", error);
+    return res.status(500).json({
+      message: "Failed Gmail callback",
     });
   }
-};
+}
+
+export async function getGmailMessages(req: Request, res: Response) {
+  try {
+    const sessionTokens = req.session.tokens;
+    const mode = getRequestedScanMode(req.query.mode);
+
+    if (!sessionTokens?.access_token) {
+      return res.status(401).json({
+        message: "Gmail is not connected",
+      });
+    }
+
+    const tokens = normalizeSessionTokens(sessionTokens);
+    const messages = await fetchNormalizedEmails(tokens, mode);
+
+    return res.status(200).json({
+      message: "Fetched Gmail messages successfully",
+      mode,
+      messages,
+    });
+  } catch (error) {
+    console.error("GET GMAIL MESSAGES ERROR:", error);
+    return res.status(500).json({
+      message: "Failed to fetch Gmail messages",
+    });
+  }
+}
+
+export async function scanGmailAccounts(req: Request, res: Response) {
+  try {
+    const sessionTokens = req.session.tokens;
+    const mode = getRequestedScanMode(req.query.mode);
+
+    if (!sessionTokens?.access_token) {
+      return res.status(401).json({
+        message: "Gmail is not connected",
+      });
+    }
+
+    const tokens = normalizeSessionTokens(sessionTokens);
+    const emails = await fetchNormalizedEmails(tokens, mode);
+    const results = scanEmails(emails);
+
+    return res.status(200).json({
+      message: `Scan completed successfully (${mode} mode)`,
+      mode,
+      totalEmailsScanned: emails.length,
+      totalServicesFound: results.length,
+      results,
+    });
+  } catch (error) {
+    console.error("SCAN GMAIL ACCOUNTS ERROR:", error);
+    return res.status(500).json({
+      message: "Failed to scan Gmail accounts",
+    });
+  }
+}
